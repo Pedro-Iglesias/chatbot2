@@ -1,107 +1,126 @@
 # Chatbot
 
-A Python chatbot built with a clean **layered architecture** and **Embeddings-based Retrieval-Augmented Generation (RAG)**.
+Um sistema de chatbot organizado em **monorepo**, com:
+
+- **Frontend** em **React + JavaScript**
+- **Backend** em **Python + FastAPI**
+- **Arquitetura em camadas** no backend
+- Suporte a **RAG (Retrieval-Augmented Generation)** com embeddings
 
 ---
 
-## Architecture Overview
+## Visão Geral da Arquitetura
 
-```
-chatbot/
-├── domain/                   # Core business rules – no external dependencies
-│   ├── entities/
-│   │   ├── message.py        # Message entity (role, content, session_id, …)
-│   │   └── document.py       # Document entity (content, source, metadata, …)
-│   └── repositories/
-│       ├── chat_repository.py      # Abstract: save/get/clear chat messages
-│       └── document_repository.py  # Abstract: save/get/list documents
+Este repositório está estruturado como um monorepo com duas aplicações principais:
+
+- `frontend/` → interface web
+- `backend/` → API, regras de negócio, integrações e núcleo do chatbot
+
+```text
+Chatbot/
+├── frontend/                         # Frontend em React + JavaScript
+│   ├── public/
+│   ├── src/
+│   │   ├── pages/                    # Páginas da aplicação
+│   │   │   ├── Login.jsx
+│   │   │   └── admin/
+│   │   │       ├── DocumentsList.jsx
+│   │   │       ├── DocumentCreate.jsx
+│   │   │       ├── DocumentEdit.jsx
+│   │   │       └── Categories.jsx
+│   │   ├── components/               # Componentes reutilizáveis
+│   │   │   ├── Layout.jsx
+│   │   │   ├── Sidebar.jsx
+│   │   │   ├── DocumentForm.jsx
+│   │   │   └── ConfirmDialog.jsx
+│   │   ├── services/                 # Camada de consumo da API
+│   │   │   ├── api.js
+│   │   │   ├── authService.js
+│   │   │   └── documentService.js
+│   │   ├── routes/
+│   │   │   └── AppRoutes.jsx
+│   │   ├── App.jsx
+│   │   └── main.jsx
+│   ├── package.json
+│   └── README.md
 │
-├── application/              # Use cases – orchestrates domain + interfaces
-│   ├── interfaces/
-│   │   ├── embedding_provider.py   # Abstract: embed(text) → vector
-│   │   └── vector_store.py         # Abstract: add_document / search
-│   └── use_cases/
-│       ├── answer_question.py      # RAG pipeline: embed → search → reply
-│       └── index_document.py       # Persist + embed a new document
+├── backend/                          # Backend em Python + FastAPI
+│   ├── app/
+│   │   ├── main.py                   # Ponto de entrada da aplicação FastAPI
+│   │   │
+│   │   ├── api/                      # Camada HTTP
+│   │   │   ├── routes/
+│   │   │   │   ├── auth.py
+│   │   │   │   ├── documents.py
+│   │   │   │   ├── categories.py
+│   │   │   │   └── users.py
+│   │   │   ├── schemas/
+│   │   │   │   ├── auth_schema.py
+│   │   │   │   ├── document_schema.py
+│   │   │   │   ├── category_schema.py
+│   │   │   │   └── user_schema.py
+│   │   │   └── deps.py
+│   │   │
+│   │   ├── application/              # Casos de uso
+│   │   │   ├── create_document.py
+│   │   │   ├── list_documents.py
+│   │   │   ├── update_document.py
+│   │   │   ├── delete_document.py
+│   │   │   ├── login_admin.py
+│   │   │   ├── answer_question.py
+│   │   │   └── index_document.py
+│   │   │
+│   │   ├── domain/                   # Regras centrais de negócio
+│   │   │   ├── entities/
+│   │   │   │   ├── document.py
+│   │   │   │   ├── category.py
+│   │   │   │   ├── user.py
+│   │   │   │   └── profile.py
+│   │   │   └── repositories/
+│   │   │       ├── document_repository.py
+│   │   │       ├── category_repository.py
+│   │   │       └── user_repository.py
+│   │   │
+│   │   ├── infrastructure/           # Integrações externas
+│   │   │   ├── database/
+│   │   │   │   ├── connection.py
+│   │   │   │   └── models/
+│   │   │   │       ├── document_model.py
+│   │   │   │       ├── category_model.py
+│   │   │   │       ├── user_model.py
+│   │   │   │       └── profile_model.py
+│   │   │   ├── repositories/
+│   │   │   │   ├── sql_document_repository.py
+│   │   │   │   ├── sql_category_repository.py
+│   │   │   │   └── sql_user_repository.py
+│   │   │   ├── security/
+│   │   │   │   ├── password_hasher.py
+│   │   │   │   └── token_service.py
+│   │   │   ├── indexing/
+│   │   │   │   └── document_indexer.py
+│   │   │   ├── embeddings/
+│   │   │   ├── llm/
+│   │   │   └── vectorstore/
+│   │   │
+│   │   └── config/
+│   │       └── settings.py
+│   │
+│   ├── tests/
+│   │   ├── api/
+│   │   ├── application/
+│   │   ├── domain/
+│   │   └── infrastructure/
+│   ├── requirements.txt
+│   └── README.md
 │
-├── infrastructure/           # Concrete implementations of interfaces
-│   ├── embeddings/
-│   │   └── openai_embedding_provider.py   # OpenAI Embeddings API
-│   ├── vector_store/
-│   │   └── faiss_vector_store.py          # FAISS flat index (in-process)
-│   └── repositories/
-│       ├── in_memory_chat_repository.py
-│       └── in_memory_document_repository.py
+├── docs/
+│   ├── arquitetura.md
+│   ├── backlog.md
+│   └── api.md
 │
-├── presentation/             # User-facing adapters
-│   └── cli.py                # Interactive REPL
+├── .github/
+│   ├── ISSUE_TEMPLATE/
+│   └── workflows/
 │
-└── config/
-    └── settings.py           # Environment-variable-based configuration
-
-main.py                       # Wiring / composition root
-requirements.txt
-tests/
-├── domain/           test_entities.py
-├── application/      test_use_cases.py
-└── infrastructure/   test_repositories.py
-```
-
-### Dependency flow
-
-```
-Presentation → Application → Domain
-Infrastructure implements Application interfaces
-```
-
-No layer imports from a layer that is "above" it.
-
----
-
-## Getting Started
-
-### 1. Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 2. Set your OpenAI API key
-
-```bash
-export OPENAI_API_KEY="sk-..."
-```
-
-### 3. Run the chatbot
-
-```bash
-python main.py
-```
-
-### 4. Run the tests
-
-```bash
-pytest tests/ -v
-```
-
----
-
-## Configuration
-
-All settings are read from environment variables:
-
-| Variable          | Default                    | Description                        |
-|-------------------|----------------------------|------------------------------------|
-| `OPENAI_API_KEY`  | *(required)*               | OpenAI secret key                  |
-| `EMBEDDING_MODEL` | `text-embedding-3-small`   | OpenAI embedding model name        |
-| `TOP_K`           | `5`                        | Number of documents to retrieve    |
-
----
-
-## CLI Usage
-
-| Input                      | Action                                  |
-|----------------------------|-----------------------------------------|
-| Any question               | Answer using RAG over indexed documents |
-| `/index <text>`            | Embed and index a new piece of knowledge |
-| `quit` / `exit` / `q`      | Exit the application                    |
+├── README.md
+└── .gitignore
