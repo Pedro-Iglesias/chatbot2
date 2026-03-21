@@ -4,6 +4,7 @@ from uuid import UUID
 
 from chatbot.domain.entities.document import Document
 from chatbot.domain.repositories.document_repository import DocumentRepository
+from Backend.app.domain.repositories.document_repository import DocumentRepository
 
 
 class InMemoryDocumentRepository(DocumentRepository):
