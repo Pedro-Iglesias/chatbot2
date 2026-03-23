@@ -76,7 +76,7 @@ class DocumentListView(APIView):
 class DocumentDeleteView(APIView):
     """
     PATCH   /api/documents/<id>/  — Edita nome, tipo e/ou arquivo do documento.
-    DELETE  /api/documents/<id>/  — Exclui o documento e seus chunks.
+    DELETE  /api/documents/<id>/  — Passo 1: solicita exclusão e retorna token de confirmação.
     Requer token JWT de administrador no header:
         Authorization: Bearer <access_token>
     """
@@ -124,20 +124,50 @@ class DocumentDeleteView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def delete(self, request, id_documento: int):
+        """
+        Passo 1 da exclusão com confirmação.
+        Retorna um token válido por 5 minutos que deve ser enviado para /confirm/.
+        """
         caso_de_uso = DocumentFactory.make_delete()
 
         try:
-            resultado = caso_de_uso.executar(id_documento)
+            resultado = caso_de_uso.solicitar_exclusao(id_documento)
             return Response(resultado, status=status.HTTP_200_OK)
 
         except ValueError as e:
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         except LookupError as e:
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+
+
+class DocumentConfirmDeleteView(APIView):
+    """
+    POST /api/documents/<id>/confirm/
+    Passo 2: confirma a exclusão com o token recebido no passo anterior.
+    Requer token JWT de administrador no header:
+        Authorization: Bearer <access_token>
+    """
+
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def post(self, request, id_documento: int):
+        """
+        Body (JSON ou form-data):
+            token — token retornado pelo DELETE /api/documents/<id>/
+        """
+        token = request.data.get("token", "")
+        caso_de_uso = DocumentFactory.make_delete()
+
+        try:
+            resultado = caso_de_uso.confirmar_exclusao(id_documento, token)
+            return Response(resultado, status=status.HTTP_200_OK)
+
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        except LookupError as e:
+            return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+
+        except PermissionError as e:
+            return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
