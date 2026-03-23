@@ -44,6 +44,14 @@ class DocumentRepository(ABC):
         """
         pass
 
+    @abstractmethod
+    def update(self, id_documento: int, campos: dict) -> dict:
+        """
+        Atualiza campos de um documento existente.
+        Retorna um dict com os dados atualizados ou None se não encontrado.
+        """
+        pass
+
 
 # ─── Implementação SQLite (mantida) ───────────────────────────────────────────
 

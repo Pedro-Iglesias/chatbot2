@@ -35,6 +35,26 @@ class PostgresDocumentRepository(DocumentRepository):
             )
         )
 
+    def update(self, id_documento: int, campos: dict) -> dict | None:
+        documento = self.get_by_id(id_documento)
+        if documento is None:
+            return None
+
+        campos_permitidos = {"nome", "tipo", "caminho_arquivo"}
+        for campo, valor in campos.items():
+            if campo in campos_permitidos:
+                setattr(documento, campo, valor)
+
+        documento.save()
+
+        return {
+            "id": documento.id,
+            "nome": documento.nome,
+            "tipo": documento.tipo,
+            "caminho_arquivo": documento.caminho_arquivo,
+            "atualizado_em": documento.atualizado_em.isoformat(),
+        }
+
     def save(self, nome: str, tipo: str, caminho_arquivo: str) -> dict:
         doc = Documento.objects.create(
             nome=nome,

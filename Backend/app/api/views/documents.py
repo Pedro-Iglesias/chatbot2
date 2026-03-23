@@ -75,13 +75,53 @@ class DocumentListView(APIView):
 
 class DocumentDeleteView(APIView):
     """
-    DELETE /api/documents/<id>/
-    Exclui um documento e todos os seus chunks do banco de dados.
+    PATCH   /api/documents/<id>/  — Edita nome, tipo e/ou arquivo do documento.
+    DELETE  /api/documents/<id>/  — Exclui o documento e seus chunks.
     Requer token JWT de administrador no header:
         Authorization: Bearer <access_token>
     """
 
     permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def patch(self, request, id_documento: int):
+        """
+        Atualiza parcialmente um documento.
+
+        Body (multipart/form-data, todos os campos são opcionais):
+            nome    — novo nome do documento
+            tipo    — portaria | resolucao | rod
+            arquivo — novo arquivo (substitui o atual no Gemini)
+        """
+        nome = request.data.get("nome") or None
+        tipo = request.data.get("tipo") or None
+        arquivo = request.FILES.get("arquivo")
+
+        conteudo_arquivo = None
+        nome_arquivo = None
+        if arquivo:
+            conteudo_arquivo = arquivo.read()
+            nome_arquivo = arquivo.name
+
+        caso_de_uso = DocumentFactory.make_update()
+
+        try:
+            resultado = caso_de_uso.executar(
+                id_documento=id_documento,
+                nome=nome,
+                tipo=tipo,
+                conteudo_arquivo=conteudo_arquivo,
+                nome_arquivo=nome_arquivo,
+            )
+            return Response(resultado, status=status.HTTP_200_OK)
+
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        except LookupError as e:
+            return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+
+        except RuntimeError as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def delete(self, request, id_documento: int):
         caso_de_uso = DocumentFactory.make_delete()
