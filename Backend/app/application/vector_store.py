@@ -2,22 +2,24 @@
 from abc import ABC, abstractmethod
 from typing import List, Tuple
 
-from chatbot.domain.entities.document import Document
+# Removido import de chatbot.domain.entities.document (estrutura antiga)
+# O modelo concreto é Backend.app.documents.models.Documento
+from Backend.app.documents.models import Documento
 
 
 class VectorStore(ABC):
-    """Stores document embeddings and supports similarity search."""
+    """Armazena embeddings de documentos e suporta busca por similaridade."""
 
     @abstractmethod
-    def add_document(self, document: Document, embedding: List[float]) -> None:
-        """Index *document* with its pre-computed *embedding*."""
+    def add_document(self, documento: Documento, embedding: List[float]) -> None:
+        """Indexa *documento* com seu *embedding* pré-calculado."""
 
     @abstractmethod
     def search(
         self, query_embedding: List[float], top_k: int = 5
-    ) -> List[Tuple[Document, float]]:
-        """Return the *top_k* most similar documents together with their scores."""
+    ) -> List[Tuple[Documento, float]]:
+        """Retorna os *top_k* documentos mais similares com seus scores."""
 
     @abstractmethod
     def clear(self) -> None:
-        """Remove all indexed documents."""
+        """Remove todos os documentos indexados."""

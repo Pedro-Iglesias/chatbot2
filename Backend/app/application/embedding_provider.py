@@ -4,12 +4,12 @@ from typing import List
 
 
 class EmbeddingProvider(ABC):
-    """Generates numerical vector representations (embeddings) for text."""
+    """Gera representações vetoriais (embeddings) para textos."""
 
     @abstractmethod
     def embed(self, text: str) -> List[float]:
-        """Return the embedding vector for *text*."""
+        """Retorna o vetor de embedding para um texto."""
 
     @abstractmethod
     def embed_batch(self, texts: List[str]) -> List[List[float]]:
-        """Return embedding vectors for a list of texts."""
+        """Retorna vetores de embedding para uma lista de textos."""
