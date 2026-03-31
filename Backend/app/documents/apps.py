@@ -4,3 +4,6 @@ class DocumentsConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "Backend.app.documents"
     label = "documents"
+
+    def ready(self):
+        import Backend.app.application.signals  # noqa

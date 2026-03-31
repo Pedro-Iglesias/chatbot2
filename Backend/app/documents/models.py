@@ -88,3 +88,19 @@ class AdminLog(models.Model):
 
     def __str__(self):
         return f"[{self.timestamp}] {self.user} → {self.action} {self.resource_type}"
+class Profile(models.Model):
+    ROLES = [
+        ("admin", "Administrador"),
+        ("user",  "Usuário"),
+    ]
+
+    user       = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
+    role       = models.CharField(max_length=20, choices=ROLES, default="user")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = "documents"
+
+    def __str__(self):
+        return f"{self.user.username} ({self.role})"

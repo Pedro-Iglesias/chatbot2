@@ -11,6 +11,7 @@ from Backend.app.api.views.documents import (
     DocumentConfirmDeleteView,
 )
 from Backend.app.api.views.admin_logs import AdminLogListView
+from Backend.app.api.views.users import UserListView, UserRoleUpdateView, MeView
 
 urlpatterns = [
     # Auth
@@ -29,4 +30,9 @@ urlpatterns = [
 
     # Admin Logs
     path("admin-logs/", AdminLogListView.as_view(), name="admin_logs"),
+
+    # Users & Profiles
+    path("users/",                     UserListView.as_view(),       name="user_list"),
+    path("users/me/",                  MeView.as_view(),             name="user_me"),
+    path("users/<int:user_id>/role/",  UserRoleUpdateView.as_view(), name="user_role_update"),
 ]
