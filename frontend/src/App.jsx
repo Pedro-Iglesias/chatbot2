@@ -1,8 +1,14 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import Cadastro from "./pages/Cadastro";
 import Chat from "./pages/Chat";
 import BaseDeConhecimento from "./pages/BaseDeConhecimento";
+import Metricas from "./pages/Metricas";
+import { authService } from "./services/authService";
+
+function RotaProtegida({ children }) {
+  return authService.isAuthenticated() ? children : <Navigate to="/" replace />;
+}
 
 function App() {
   return (
@@ -10,11 +16,9 @@ function App() {
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/cadastro" element={<Cadastro />} />
-        <Route path="/admin" element={<Chat />} />
-        <Route
-          path="/admin/base-de-conhecimento"
-          element={<BaseDeConhecimento />}
-        />
+        <Route path="/admin" element={<RotaProtegida><Chat /></RotaProtegida>} />
+        <Route path="/admin/base-de-conhecimento" element={<RotaProtegida><BaseDeConhecimento /></RotaProtegida>} />
+        <Route path="/admin/metricas" element={<RotaProtegida><Metricas /></RotaProtegida>} />
       </Routes>
     </BrowserRouter>
   );

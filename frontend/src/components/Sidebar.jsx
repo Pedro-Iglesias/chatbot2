@@ -1,18 +1,20 @@
 import "./Sidebar.css";
-import logo from "../assets/images/logo_chatbot.svg";
+import logo       from "../assets/images/logo_chatbot.svg";
 import hideSidebar from "../assets/images/hide-sidebar.svg";
-import novoChat from "../assets/images/novo_chat.svg";
-import historico from "../assets/images/historico.svg";
+import novoChat   from "../assets/images/novo_chat.svg";
+import historico  from "../assets/images/historico.svg";
 import basedeconhec from "../assets/images/basedeconhecimento.svg";
-import metricas from "../assets/images/metricas.svg";
+import metricas   from "../assets/images/metricas.svg";
 
 import { useNavigate } from "react-router-dom";
+import { authService } from "../services/authService";
 
 export default function Sidebar({ tipo }) {
   const navigate = useNavigate();
 
-  function irBaseConhecimento() {
-    navigate("/admin/base-de-conhecimento");
+  function handleLogout() {
+    authService.logout();
+    navigate("/");
   }
 
   return (
@@ -28,19 +30,19 @@ export default function Sidebar({ tipo }) {
       </div>
 
       <div className="menuTop">
-        <div className="item menu">
+        <div className="item menu" onClick={() => navigate("/admin")}>
           <img src={novoChat} className="icon" />
           <span>Novo Chat</span>
         </div>
 
         {tipo === "admin" && (
           <>
-            <div className="item menu" onClick={irBaseConhecimento}>
+            <div className="item menu" onClick={() => navigate("/admin/base-de-conhecimento")}>
               <img src={basedeconhec} className="icon" />
               <span>Base de conhecimento</span>
             </div>
 
-            <div className="item menu">
+            <div className="item menu" onClick={() => navigate("/admin/metricas")}>
               <img src={metricas} className="icon" />
               <span>Métricas</span>
             </div>
@@ -55,7 +57,6 @@ export default function Sidebar({ tipo }) {
 
       <div className="chats">
         <div className="miniTitulo">Seus chats</div>
-        {/* Criar uma classe para chat */}
         <div className="chatItem">Chat sobre IA</div>
         <div className="chatItem">Banco de dados</div>
         <div className="chatItem">Projeto TCC</div>
@@ -68,6 +69,9 @@ export default function Sidebar({ tipo }) {
           <div className="avatar">K</div>
           <div className="nome">Kenzo Annichini de Oliveira</div>
         </div>
+        <button onClick={handleLogout} className="btnLogout">
+          Sair
+        </button>
       </div>
     </div>
   );

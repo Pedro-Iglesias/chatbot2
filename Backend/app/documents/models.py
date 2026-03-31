@@ -4,6 +4,7 @@ Modelo para armazenar documentos e seus chunks com embeddings.
 """
 
 from django.db import models
+from django.contrib.auth.models import User
 
 
 class TipoDocumento(models.TextChoices):
@@ -63,3 +64,27 @@ class ChunkDocumento(models.Model):
 
     def __str__(self):
         return f"{self.documento.nome} — chunk {self.numero_chunk}"
+class AdminLog(models.Model):
+    ACTIONS = [
+        ("LOGIN",   "Login"),
+        ("LOGOUT",  "Logout"),
+        ("CREATE",  "Criação"),
+        ("UPDATE",  "Edição"),
+        ("DELETE",  "Exclusão"),
+        ("REINDEX", "Reindexação"),
+    ]
+
+    user          = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    action        = models.CharField(max_length=20, choices=ACTIONS)
+    resource_type = models.CharField(max_length=50, blank=True)
+    resource_id   = models.IntegerField(null=True, blank=True)
+    resource_name = models.CharField(max_length=255, blank=True)
+    details       = models.TextField(blank=True)
+    timestamp     = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering  = ["-timestamp"]
+        app_label = "documents"
+
+    def __str__(self):
+        return f"[{self.timestamp}] {self.user} → {self.action} {self.resource_type}"

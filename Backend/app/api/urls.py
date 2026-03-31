@@ -10,28 +10,23 @@ from Backend.app.api.views.documents import (
     DocumentDeleteView,
     DocumentConfirmDeleteView,
 )
+from Backend.app.api.views.admin_logs import AdminLogListView
 
 urlpatterns = [
-    # ── Auth ──────────────────────────────────────────────────────────────────
+    # Auth
     path("auth/login/",   LoginView.as_view(),        name="login"),
     path("auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
 
-    # ── Chat ──────────────────────────────────────────────────────────────────
+    # Chat
     path("chat/", ChatView.as_view(), name="chat"),
 
-    # ── Documents — CRUD completo ─────────────────────────────────────────────
-    path("documents/",
-         DocumentListView.as_view(),    name="document_list"),
+    # Documents
+    path("documents/",                            DocumentListView.as_view(),          name="document_list"),
+    path("documents/create/",                     DocumentCreateView.as_view(),        name="document_create"),
+    path("documents/<int:id_documento>/",         DocumentDetailView.as_view(),        name="document_detail"),
+    path("documents/<int:id_documento>/delete/",  DocumentDeleteView.as_view(),        name="document_delete"),
+    path("documents/<int:id_documento>/confirm/", DocumentConfirmDeleteView.as_view(), name="document_confirm_delete"),
 
-    path("documents/create/",
-         DocumentCreateView.as_view(),  name="document_create"),
-
-    path("documents/<int:id_documento>/",
-         DocumentDetailView.as_view(),  name="document_detail"),          # PATCH
-
-    path("documents/<int:id_documento>/delete/",
-         DocumentDeleteView.as_view(),  name="document_delete"),          # DELETE → step 1
-
-    path("documents/<int:id_documento>/confirm/",
-         DocumentConfirmDeleteView.as_view(), name="document_confirm_delete"),  # DELETE → step 2
+    # Admin Logs
+    path("admin-logs/", AdminLogListView.as_view(), name="admin_logs"),
 ]
