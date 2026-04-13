@@ -54,8 +54,9 @@ class ChatPerguntaView(APIView):
 
         mensagem = registrar_mensagem(conversa, question)
 
-        # gerar_resposta agora retorna (resposta, intencao)
+        # Nosso código blindado que retorna a resposta e a intenção!
         resposta, intencao = gerar_resposta(mensagem.conteudo_processado)
+        
         registrar_resposta(conversa, resposta)
 
         return Response(

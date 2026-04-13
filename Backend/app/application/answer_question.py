@@ -45,7 +45,7 @@ def _embeddar(texto: str):
     from django.conf import settings
     genai.configure(api_key=settings.GEMINI_API_KEY)
     
-    # Este é o modelo que apareceu com "✅" no seu log de indexação:
+    # Este é o modelo que apareceu com "✅" no seu log de indexação
     modelo_que_funciona = "models/gemini-embedding-001"
 
     try:
@@ -56,13 +56,14 @@ def _embeddar(texto: str):
         )
         return result['embedding']
     except Exception as e:
-        # Plano B caso o Google queira o nome sem o prefixo 'models/'
+        # Plano B
         result = genai.embed_content(
             model="gemini-embedding-001",
             content=texto,
             task_type="retrieval_query"
         )
         return result['embedding']
+
 def _buscar_chunks(embedding_pergunta, top_k: int):
     chunks = ChunkDocumento.objects.exclude(embedding=None).select_related("documento")
     scored = []
@@ -88,7 +89,8 @@ def gerar_resposta(pergunta_processada: str) -> tuple[str, str]:
         
         prompt = (
             "Você é um assistente institucional do IFES. "
-            "Responda à pergunta do usuário de forma clara e educada, baseando-se APENAS no contexto abaixo.\n\n"
+            "Responda à pergunta do usuário de forma clara e educada, baseando-se APENAS no contexto abaixo. "
+            "Se a resposta não estiver no contexto fornecido, responda gentilmente que não encontrou a informação nos documentos.\n\n"
             f"Contexto:\n{contexto}\n\n"
             f"Pergunta: {pergunta_processada}"
         )
@@ -96,13 +98,12 @@ def gerar_resposta(pergunta_processada: str) -> tuple[str, str]:
         import google.generativeai as genai
         genai.configure(api_key=settings.GEMINI_API_KEY)
         
-        # A CARTADA FINAL: Pega dinamicamente o modelo de texto que o Google aprovar!
+        # A CARTADA FINAL: Pega dinamicamente o modelo de texto
         modelo_texto = "gemini-1.5-flash" # Fallback
         try:
             para_chat = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
             if para_chat:
-                modelo_texto = para_chat[0] # Pega o primeiro que funcionar
-                # Se tiver a versão flash na lista, dá preferência pra ela que é mais rápida
+                modelo_texto = para_chat[0]
                 for m in para_chat:
                     if 'flash' in m:
                         modelo_texto = m
