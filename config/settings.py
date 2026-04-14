@@ -3,7 +3,7 @@ from pathlib import Path
 
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    load_dotenv(encoding="utf-8")
 except ImportError:
     pass
 

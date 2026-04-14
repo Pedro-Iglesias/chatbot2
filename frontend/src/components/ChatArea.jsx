@@ -40,6 +40,7 @@ export default function ChatArea() {
           role: "assistant",
           conteudo: res.data.answer,
           fontes: res.data.fontes ?? [],
+          respondida: res.data.respondida,
         },
       ]);
     } catch {
@@ -47,8 +48,9 @@ export default function ChatArea() {
         ...prev,
         {
           role: "assistant",
-          conteudo: "Não foi possível obter uma resposta. Tente novamente.",
+          conteudo: "Não foi possível conectar ao servidor. Tente novamente.",
           fontes: [],
+          respondida: false,
         },
       ]);
     } finally {
@@ -72,21 +74,36 @@ export default function ChatArea() {
           </div>
         ) : (
           <div className="listaMensagens">
-            {mensagens.map((msg, i) => (
-              <div key={i} className={`bolha ${msg.role}`}>
-                <div className="textoBolha">{msg.conteudo}</div>
-                {msg.fontes && msg.fontes.length > 0 && (
-                  <div className="fontesArea">
-                    <span className="fontesTitulo">Fontes:</span>
-                    {msg.fontes.map((fonte) => (
-                      <span key={fonte.id} className="fonteTag">
-                        {fonte.nome}
+            {mensagens.map((msg, i) => {
+              const semResposta =
+                msg.role === "assistant" && msg.respondida === false;
+              return (
+                <div
+                  key={i}
+                  className={`bolha ${msg.role}${semResposta ? " sem-resposta" : ""}`}
+                >
+                  {semResposta && (
+                    <div className="sem-resposta-header">
+                      <span className="sem-resposta-icone">&#9888;</span>
+                      <span className="sem-resposta-titulo">
+                        Não foi possível responder
                       </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+                    </div>
+                  )}
+                  <div className="textoBolha">{msg.conteudo}</div>
+                  {msg.fontes && msg.fontes.length > 0 && (
+                    <div className="fontesArea">
+                      <span className="fontesTitulo">Fontes:</span>
+                      {msg.fontes.map((fonte) => (
+                        <span key={fonte.id} className="fonteTag">
+                          {fonte.nome}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
 
             {carregando && (
               <div className="bolha assistant">

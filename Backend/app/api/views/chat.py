@@ -80,6 +80,8 @@ class ChatPerguntaView(APIView):
                 "pergunta_processada":  mensagem.conteudo_processado,
                 "answer":               resultado["resposta"],
                 "fontes":               resultado["fontes"],
+                "respondida":           resultado["respondida"],
+                "intencao":             resultado["intencao"],
             },
             status=status.HTTP_200_OK,
         )
