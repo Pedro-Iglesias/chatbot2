@@ -11,6 +11,7 @@ export default function ChatArea() {
   const [input, setInput] = useState("");
   const [carregando, setCarregando] = useState(false);
   const [conversaId, setConversaId] = useState(null);
+  const [erroCarregamento, setErroCarregamento] = useState("");
   const fimRef = useRef(null);
   const location = useLocation();
 
@@ -18,6 +19,7 @@ export default function ChatArea() {
     if (!authService.isAuthenticated()) {
       setMensagens([]);
       setConversaId(null);
+      setErroCarregamento("");
       return;
     }
 
@@ -25,6 +27,7 @@ export default function ChatArea() {
 
     if (conversaSelecionada) {
       setCarregando(true);
+      setErroCarregamento("");
       api
         .get(`/api/chat/${conversaSelecionada}/historico/`)
         .then((res) => {
@@ -33,6 +36,7 @@ export default function ChatArea() {
             conteudo: m.conteudo_original,
             fontes: m.fontes ?? [],
             citacoes: [],
+            documentoPrincipal: null,
             respondida: true,
             avaliada: false,
           }));
@@ -42,6 +46,11 @@ export default function ChatArea() {
         })
         .catch((err) => {
           console.error("Erro ao carregar histórico da conversa:", err);
+          setErroCarregamento(
+            err.response?.status === 401
+              ? "Sua sessão expirou. Faça login novamente para acessar o chat."
+              : "Não foi possível carregar esta conversa agora."
+          );
           setMensagens([]);
         })
         .finally(() => setCarregando(false));
@@ -50,6 +59,7 @@ export default function ChatArea() {
 
     setMensagens([]);
     setConversaId(null);
+    setErroCarregamento("");
   }, [location.search]);
 
   useEffect(() => {
@@ -92,20 +102,29 @@ export default function ChatArea() {
           conteudo:   res.data.answer,
           fontes:     res.data.fontes    ?? [],
           citacoes:   res.data.citacoes  ?? [],
+          documentoPrincipal: res.data.documento_principal ?? null,
           respondida: res.data.respondida,
           avaliada:   false, 
         },
       ]);
     } catch (error) {
       console.error("Erro na requisição da pergunta:", error);
+      setErroCarregamento(
+        error.response?.status === 401
+          ? "Sua sessão expirou. Faça login novamente para continuar."
+          : "Não foi possível conectar ao servidor. Tente novamente."
+      );
       setMensagens((prev) => [
         ...prev,
         {
           role:       "assistant",
-          conteudo:   "Não foi possível conectar ao servidor. Tente novamente.",
+          conteudo:   error.response?.status === 401
+            ? "Sua sessão expirou. Faça login novamente para continuar."
+            : "Não foi possível conectar ao servidor. Tente novamente.",
           fontes:     [],
           citacoes:   [],
-          respondida: false,
+          documentoPrincipal: null,
+          respondida: true,
         },
       ]);
     } finally {
@@ -142,6 +161,7 @@ export default function ChatArea() {
         {mensagens.length === 0 ? (
           <div className="placeholder">
             <h2>Como posso ajudar?</h2>
+            {erroCarregamento && <p className="placeholderErro">{erroCarregamento}</p>}
           </div>
         ) : (
           <div className="listaMensagens">
@@ -159,7 +179,20 @@ export default function ChatArea() {
                   {/* ISSUE 2: MELHORIA DA FORMATAÇÃO (MARKDOWN) */}
                   <div className="textoBolha">
                     {msg.role === "assistant" ? (
-                      <ReactMarkdown>{msg.conteudo || ""}</ReactMarkdown>
+                      <div className="markdownResposta">
+                        <ReactMarkdown
+                          components={{
+                            p: ({ children }) => <p className="markdownParagrafo">{children}</p>,
+                            ul: ({ children }) => <ul className="markdownLista">{children}</ul>,
+                            ol: ({ children }) => <ol className="markdownLista">{children}</ol>,
+                            li: ({ children }) => <li className="markdownItem">{children}</li>,
+                            strong: ({ children }) => <strong className="markdownNegrito">{children}</strong>,
+                            blockquote: ({ children }) => <blockquote className="markdownCitacao">{children}</blockquote>,
+                          }}
+                        >
+                          {msg.conteudo || ""}
+                        </ReactMarkdown>
+                      </div>
                     ) : (
                       msg.conteudo
                     )}
@@ -167,6 +200,15 @@ export default function ChatArea() {
 
                   {msg.citacoes && msg.citacoes.length > 0 && (
                     <CitacoesArea citacoes={msg.citacoes} />
+                  )}
+
+                  {msg.role === "assistant" && msg.documentoPrincipal && (
+                    <div className="documentoPrincipalArea">
+                      <span className="documentoPrincipalLabel">Documento principal</span>
+                      <span className="documentoPrincipalValor">
+                        {msg.documentoPrincipal.nome} ({String(msg.documentoPrincipal.tipo || "desconhecido").toUpperCase()})
+                      </span>
+                    </div>
                   )}
 
                   {/* ISSUE 4: BOTÕES DE AVALIAÇÃO */}
@@ -235,7 +277,7 @@ function CitacoesArea({ citacoes }) {
                 <span className="citacaoDoc">{c.documento_nome}</span>
                 {c.numero_pagina && <span className="citacaoPagina">pág.&nbsp;{c.numero_pagina}</span>}
               </div>
-              <blockquote className="citacaoTrecho">"{c.trecho}"</blockquote>
+              <blockquote className="citacaoTrecho">{c.trecho}</blockquote>
             </li>
           ))}
         </ul>
