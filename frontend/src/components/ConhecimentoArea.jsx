@@ -119,13 +119,11 @@ export default function ConhecimentoArea() {
 
   async function handleExcluir(id) {
     try {
-      // Passo 1: solicita exclusão e recebe token
       const resSolicitar = await api.delete(`/api/documents/${id}/`);
       const token = resSolicitar.data?.token;
       if (!token) {
         throw new Error("Token de confirmação não recebido.");
       }
-      // Passo 2: confirma exclusão com o token
       await api.post(`/api/documents/${id}/confirm/`, { token });
       carregar();
     } catch (e) {
@@ -143,6 +141,9 @@ export default function ConhecimentoArea() {
     if (!d.indexado_em) return max;
     return !max || new Date(d.indexado_em) > new Date(max) ? d.indexado_em : max;
   }, null);
+  const indexados = total;
+  const pendentes = 0;
+  const resumo = { total, indexados, pendentes, ultimaAtualizacao: ultima ? new Date(ultima).toLocaleDateString("pt-BR") : "-" };
 
   return (
     <div className="conhecArea">
@@ -156,19 +157,19 @@ export default function ConhecimentoArea() {
       <div className="dadosDoc">
         <div className="cardDados">
           <h2>Total de Documentos</h2>
-          <h2>{total}</h2>
+          <h2>{resumo.total}</h2>
         </div>
         <div className="cardDados">
           <h2>Última Atualização</h2>
-          <h2>{formatarData(ultima)}</h2>
+          <h2>{resumo.ultimaAtualizacao}</h2>
         </div>
         <div className="cardDados">
           <h2>Indexados</h2>
-          <h2>{total}</h2>
+          <h2>{resumo.indexados}</h2>
         </div>
         <div className="cardDados">
           <h2>Pendentes</h2>
-          <h2>0</h2>
+          <h2>{resumo.pendentes}</h2>
         </div>
       </div>
 

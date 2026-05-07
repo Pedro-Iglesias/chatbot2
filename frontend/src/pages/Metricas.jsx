@@ -1,159 +1,244 @@
-import { useEffect, useState } from "react";
-import Sidebar from "../components/Sidebar";
+import { useState, useEffect } from "react";
 import api from "../services/api";
+import Sidebar from "../components/Sidebar";
 
-const cardStyle = {
-  background: "#393e46",
-  border: "1px solid #4a5060",
-  borderRadius: 12,
-  padding: "20px 24px",
-  fontFamily: "Poppins",
-  color: "#eee",
-  minWidth: 220,
-  flex: "1 1 220px",
+// ── Estilos compartilhados ──────────────────────────────────────────────────
+const cardBase = {
+  flex: "1 1 250px",
+  backgroundColor: "#2c2f33",
+  padding: "25px",
+  borderRadius: "12px",
+  textAlign: "center",
+  border: "1px solid #444",
 };
 
-const valorStyle = {
-  fontSize: 38,
-  fontWeight: 700,
-  color: "#00adb5",
-  marginTop: 8,
+const cardLabel = {
+  color: "#a0a0a0",
+  margin: "0 0 15px 0",
+  textTransform: "uppercase",
+  fontSize: "0.9rem",
 };
 
-const labelStyle = {
-  fontSize: 13,
-  opacity: 0.7,
+const cardValue = {
+  fontSize: "3.5rem",
+  margin: 0,
+  fontWeight: "bold",
 };
+
+const cardSub = {
+  marginTop: "8px",
+  fontSize: "0.85rem",
+  color: "#a0a0a0",
+};
+
+/**
+ * Escolhe a cor da taxa em função do valor:
+ *  - Sucesso/acurácia: verde alto, amarelo médio, vermelho baixo
+ *  - Reformulação: invertido (alto reformulação = ruim)
+ */
+function corTaxa(valor, { invertida = false } = {}) {
+  if (valor == null) return "#a0a0a0";
+  const v = invertida ? 100 - valor : valor;
+  if (v >= 75) return "#4caf50";
+  if (v >= 40) return "#f0c87a";
+  return "#ff6b6b";
+}
+
+/** Barrinha horizontal de progresso (0–100%) usada nos cards de taxa. */
+function BarraProgresso({ valor, cor }) {
+  const v = Math.max(0, Math.min(100, valor || 0));
+  return (
+    <div
+      style={{
+        marginTop: "10px",
+        height: "6px",
+        width: "100%",
+        backgroundColor: "#1c1c1c",
+        borderRadius: "3px",
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          height: "100%",
+          width: `${v}%`,
+          backgroundColor: cor,
+          transition: "width 0.4s ease",
+        }}
+      />
+    </div>
+  );
+}
 
 export default function Metricas() {
-  const [m, setM] = useState(null);
-  const [erro, setErro] = useState(null);
-  const [carregando, setCarregando] = useState(true);
+  const [data, setData]   = useState(null);
+  const [admin, setAdmin] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api
-      .get("/api/admin/metrics/")
-      .then((res) => setM(res.data))
-      .catch((e) =>
-        setErro(e.response?.data?.error || "Erro ao carregar métricas")
-      )
-      .finally(() => setCarregando(false));
+    Promise.allSettled([
+      api.get("/api/chat/metricas/"),
+      api.get("/api/admin/metrics/"),
+    ]).then(([chatRes, adminRes]) => {
+      if (chatRes.status === "fulfilled") setData(chatRes.value.data);
+      if (adminRes.status === "fulfilled") setAdmin(adminRes.value.data);
+      setLoading(false);
+    });
   }, []);
 
   return (
-    <div style={{ display: "flex", height: "100vh", backgroundColor: "#222831" }}>
+    <div
+      style={{
+        display: "flex",
+        height: "100vh",
+        width: "100vw",
+        backgroundColor: "#1c1c1c",
+        color: "#ffffff",
+        overflow: "hidden",
+      }}
+    >
       <Sidebar />
-      <div style={{ flex: 1, padding: 30, overflowY: "auto" }}>
-        <h2 style={{ color: "#00adb5", fontFamily: "Poppins", marginBottom: 24 }}>
-          Métricas do Chatbot
-        </h2>
 
-        {carregando && <p style={{ color: "#eee", fontFamily: "Poppins" }}>Carregando...</p>}
-        {erro && <p style={{ color: "#f55", fontFamily: "Poppins" }}>{erro}</p>}
+      <div style={{ flex: 1, padding: "40px", overflowY: "auto" }}>
+        <h1 style={{ borderBottom: "1px solid #333", paddingBottom: "15px", marginTop: 0 }}>
+          📊 Métricas de Uso
+        </h1>
 
-        {m && (
+        {loading ? (
+          <p style={{ color: "#a0a0a0" }}>Carregando dados do servidor...</p>
+        ) : !data && !admin ? (
+          <p style={{ color: "#ff6b6b" }}>
+            Erro ao carregar métricas. Verifique se o backend está rodando.
+          </p>
+        ) : (
           <>
-            {/* Cards destacados — Taxa de acurácia e Taxa de sucesso */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 24 }}>
-              <div
-                style={{
-                  ...cardStyle,
-                  background: "linear-gradient(135deg, #00adb5 0%, #007a80 100%)",
-                  color: "#fff",
-                  flex: "1 1 320px",
-                  maxWidth: 480,
-                }}
-              >
-                <div style={{ ...labelStyle, color: "rgba(255,255,255,0.9)", fontSize: 14 }}>
-                  Taxa de acurácia
-                </div>
-                <div style={{ ...valorStyle, color: "#fff", fontSize: 56 }}>
-                  {m.taxa_acuracia === null ? "—" : `${m.taxa_acuracia}%`}
-                </div>
-                <div style={{ fontSize: 13, opacity: 0.9, marginTop: 4 }}>
-                  {m.feedback_avaliadas === 0
-                    ? "Ainda não há respostas avaliadas pelos usuários."
-                    : `${m.feedback_positivos} positivas de ${m.feedback_avaliadas} avaliadas`}
-                </div>
-                <div style={{ fontSize: 11, opacity: 0.75, marginTop: 6, fontStyle: "italic" }}>
-                  positivos ÷ (positivos + negativos)
+            {admin && (
+              <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 30 }}>
+                <div
+                  style={{
+                    ...cardBase,
+                    background: "linear-gradient(135deg, #00adb5 0%, #007a80 100%)",
+                    color: "#fff",
+                    border: "none",
+                    flex: "1 1 320px",
+                    maxWidth: 480,
+                  }}
+                >
+                  <h3 style={{ ...cardLabel, color: "rgba(255,255,255,0.9)" }}>
+                    Taxa de acurácia
+                  </h3>
+                  <p style={{ ...cardValue, color: "#fff" }}>
+                    {admin.taxa_acuracia === null ? "—" : `${admin.taxa_acuracia}%`}
+                  </p>
+                  <div style={{ ...cardSub, color: "rgba(255,255,255,0.85)" }}>
+                    {admin.feedback_avaliadas === 0
+                      ? "Ainda não há respostas avaliadas pelos usuários."
+                      : `${admin.feedback_positivos} positivas de ${admin.feedback_avaliadas} avaliadas`}
+                  </div>
                 </div>
               </div>
+            )}
 
-              <div
-                style={{
-                  ...cardStyle,
-                  background: "linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)",
-                  color: "#fff",
-                  flex: "1 1 320px",
-                  maxWidth: 480,
-                }}
-              >
-                <div style={{ ...labelStyle, color: "rgba(255,255,255,0.9)", fontSize: 14 }}>
-                  Taxa de sucesso
-                </div>
-                <div style={{ ...valorStyle, color: "#fff", fontSize: 56 }}>
-                  {m.taxa_sucesso === null ? "—" : `${m.taxa_sucesso}%`}
-                </div>
-                <div style={{ fontSize: 13, opacity: 0.9, marginTop: 4 }}>
-                  {m.total_respostas === 0
-                    ? "Nenhuma resposta gerada ainda."
-                    : `${m.respostas_bem_sucedidas} aceitas de ${m.total_respostas} respostas`}
-                </div>
-                <div style={{ fontSize: 11, opacity: 0.75, marginTop: 6, fontStyle: "italic" }}>
-                  respostas sem 👎 e sem regeneração ÷ total
-                </div>
-              </div>
-            </div>
+            {data && (
+              <>
+                <div style={{ display: "flex", gap: "20px", marginTop: "30px", flexWrap: "wrap" }}>
+                  <div style={cardBase}>
+                    <h3 style={cardLabel}>Total de Conversas</h3>
+                    <p style={{ ...cardValue, color: "#4caf50" }}>{data.total_conversas}</p>
+                  </div>
 
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 32 }}>
-              <div style={cardStyle}>
-                <div style={labelStyle}>Quantidade de respostas</div>
-                <div style={valorStyle}>{m.total_respostas}</div>
-              </div>
+                  <div style={cardBase}>
+                    <h3 style={cardLabel}>Total de Mensagens</h3>
+                    <p style={{ ...cardValue, color: "#4caf50" }}>{data.total_mensagens}</p>
+                  </div>
 
-              <div style={cardStyle}>
-                <div style={labelStyle}>Avaliações positivas</div>
-                <div style={valorStyle}>
-                  {m.feedback_pct_positivo}%
+                  <div style={cardBase}>
+                    <h3 style={cardLabel}>Média de Notas</h3>
+                    <p style={{ ...cardValue, color: "#4caf50" }}>{data.media_notas}</p>
+                  </div>
                 </div>
-                <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
-                  {m.feedback_positivos} de {m.feedback_avaliadas} avaliadas
-                </div>
-              </div>
 
-              <div style={cardStyle}>
-                <div style={labelStyle}>Avaliações negativas</div>
-                <div style={{ ...valorStyle, color: "#f08080" }}>
-                  {m.feedback_pct_negativo}%
-                </div>
-                <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
-                  {m.feedback_negativos} de {m.feedback_avaliadas} avaliadas
-                </div>
-              </div>
+                <h2
+                  style={{
+                    marginTop: "40px",
+                    fontSize: "1.2rem",
+                    color: "#a0a0a0",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  Qualidade das respostas
+                </h2>
+                <div style={{ display: "flex", gap: "20px", marginTop: "15px", flexWrap: "wrap" }}>
+                  <div style={cardBase}>
+                    <h3 style={cardLabel}>✅ Taxa de sucesso</h3>
+                    <p style={{ ...cardValue, color: corTaxa(data.taxa_sucesso) }}>
+                      {data.taxa_sucesso ?? 0}%
+                    </p>
+                    <BarraProgresso valor={data.taxa_sucesso ?? 0} cor={corTaxa(data.taxa_sucesso)} />
+                    <div style={cardSub}>
+                      {data.respostas_ok ?? 0} de {data.respostas_total ?? 0} respostas com sucesso
+                    </div>
+                  </div>
 
-              <div style={cardStyle}>
-                <div style={labelStyle}>Refatorações</div>
-                <div style={valorStyle}>{m.refatoracoes}</div>
-                <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
-                  respostas regeneradas pelo usuário
+                  <div style={cardBase}>
+                    <h3 style={cardLabel}>🔁 Taxa de reformulação</h3>
+                    <p style={{ ...cardValue, color: corTaxa(data.taxa_reformulacao, { invertida: true }) }}>
+                      {data.taxa_reformulacao ?? 0}%
+                    </p>
+                    <BarraProgresso
+                      valor={data.taxa_reformulacao ?? 0}
+                      cor={corTaxa(data.taxa_reformulacao, { invertida: true })}
+                    />
+                    <div style={cardSub}>
+                      {data.reformulacoes ?? 0} de {data.perguntas_total ?? 0} perguntas reformuladas
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            <h3 style={{ color: "#00adb5", fontFamily: "Poppins", marginBottom: 12 }}>
-              Outros números
-            </h3>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
-              <div style={cardStyle}>
-                <div style={labelStyle}>Total de conversas</div>
-                <div style={valorStyle}>{m.total_conversas}</div>
-              </div>
-              <div style={cardStyle}>
-                <div style={labelStyle}>Total de perguntas feitas</div>
-                <div style={valorStyle}>{m.total_perguntas}</div>
-              </div>
-            </div>
+                <div
+                  style={{
+                    marginTop: "30px",
+                    backgroundColor: "#2c2f33",
+                    padding: "25px",
+                    borderRadius: "12px",
+                    maxWidth: "400px",
+                    border: "1px solid #444",
+                  }}
+                >
+                  <h2 style={{ marginTop: 0, marginBottom: "20px", fontSize: "1.2rem" }}>
+                    Feedback dos Usuários
+                  </h2>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      fontSize: "1.2rem",
+                      padding: "10px 0",
+                      borderBottom: "1px solid #444",
+                    }}
+                  >
+                    <span>👍 Positivos</span>
+                    <strong style={{ color: "#4caf50" }}>{data.feedbacks_positivos}</strong>
+                  </div>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      fontSize: "1.2rem",
+                      padding: "15px 0 0 0",
+                    }}
+                  >
+                    <span>👎 Negativos</span>
+                    <strong style={{ color: "#ff6b6b" }}>{data.feedbacks_negativos}</strong>
+                  </div>
+                </div>
+              </>
+            )}
           </>
         )}
       </div>

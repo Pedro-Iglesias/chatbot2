@@ -145,6 +145,7 @@ class Profile(models.Model):
 class Conversa(models.Model):
     """Representa uma sessão de chat entre um usuário e o chatbot."""
     user       = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    titulo      = models.CharField(max_length=255, blank=True, default="")
     iniciada_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -152,7 +153,7 @@ class Conversa(models.Model):
         ordering  = ["-iniciada_em"]
 
     def __str__(self):
-        return f"Conversa #{self.id} — {self.user}"
+        return self.titulo or f"Conversa #{self.id} — {self.user}"
 class Mensagem(models.Model):
     ROLES = [
         ("user",      "Usuário"),
@@ -169,6 +170,21 @@ class Mensagem(models.Model):
     conteudo_processado  = models.TextField(blank=True) # pergunta após pré-processamento (#37)
     feedback             = models.CharField(max_length=10, choices=FEEDBACKS, null=True, blank=True)
     foi_reformulada      = models.BooleanField(default=False)  # marcador de "refatoração" (regenerar resposta)
+    fontes               = models.ManyToManyField(      # documentos usados na resposta RAG
+                               Documento,
+                               blank=True,
+                               related_name="mensagens_origem",
+                           )
+    nota                 = models.IntegerField(null=True, blank=True, help_text="Nota de 1 a 5, ou 1 para Like e -1 para Dislike")
+    comentario           = models.TextField(null=True, blank=True)
+    respondida           = models.BooleanField(
+        null=True, blank=True,
+        help_text=(
+            "Apenas para role='assistant'. True quando o modelo encontrou resposta "
+            "no contexto; False quando declarou desconhecimento. NULL para mensagens "
+            "do usuário ou registros antigos (pré-instrumentação)."
+        ),
+    )
     criada_em            = models.DateTimeField(auto_now_add=True)
 
     class Meta:

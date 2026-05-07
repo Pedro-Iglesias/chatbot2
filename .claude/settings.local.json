@@ -37,7 +37,19 @@
       "Bash(PYTHONIOENCODING=utf-8 python manage.py makemigrations documents)",
       "Bash(PYTHONIOENCODING=utf-8 python manage.py migrate)",
       "Bash(python -m json.tool)",
-      "Bash(python -c \"import pypdf; print\\('pypdf', pypdf.__version__\\)\")"
+      "Bash(python -c \"import pypdf; print\\('pypdf', pypdf.__version__\\)\")",
+      "Bash(python -m pytest Backend/tests/application/test_citacoes.py --tb=short)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(python auditoria_vendas.py)",
+      "Bash(python -c \"import reportlab; print\\(reportlab.Version\\)\")",
+      "Bash(python gerar_pdf.py)",
+      "Bash(grep -rln *)",
+      "Bash(rm -f Backend/app/documents/migrations/0005_mensagem_feedback_mensagem_foi_reformulada.py Backend/app/documents/migrations/0006_alter_chunkdocumento_unique_together_versaodocumento_and_more.py Backend/app/documents/migrations/0007_backfill_versoes.py Backend/app/documents/migrations/__pycache__/0005_mensagem_feedback_mensagem_foi_reformulada* Backend/app/documents/migrations/__pycache__/0006_alter_chunkdocumento* Backend/app/documents/migrations/__pycache__/0007_backfill_versoes* 2>&1 *)",
+      "Bash(PYTHONIOENCODING=utf-8 python manage.py migrate documents 0004_conversa_mensagem --fake)",
+      "Bash(PYTHONIOENCODING=utf-8 python manage.py migrate documents 0009_mensagem_respondida)",
+      "Bash(PYTHONIOENCODING=utf-8 python manage.py migrate documents --fake)",
+      "Bash(PYTHONIOENCODING=utf-8 python manage.py showmigrations documents)"
     ]
   }
 }

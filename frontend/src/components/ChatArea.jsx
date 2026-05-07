@@ -1,108 +1,167 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import "./ChatArea.css";
 import enviarIcon from "../assets/images/enviar.svg";
-import api from "../services/api";
+import api from "../services/api.jsx";
+import { authService } from "../services/authService";
 
-export default function ChatArea({ conversaId, setConversaId, onConversaCriada }) {
-  const [mensagens, setMensagens] = useState([]);
-  const [input, setInput] = useState("");
+export default function ChatArea() {
+  const [mensagens, setMensagens]   = useState([]);
+  const [input, setInput]           = useState("");
+  const [erroCarregamento, setErroCarregamento] = useState("");
   const [carregando, setCarregando] = useState(false);
-  const fimRef = useRef(null);
+  const [conversaId, setConversaId] = useState(null);
+  const ultimaPerguntaRef           = useRef("");   // usada para reenviar após clarificação
+  const fimRef                      = useRef(null);
+  const location                    = useLocation();
+
+  useEffect(() => {
+    if (!authService.isAuthenticated()) {
+      setMensagens([]);
+      setConversaId(null);
+      setErroCarregamento("");
+      return;
+    }
+
+    const conversaSelecionada = new URLSearchParams(location.search).get("conversa");
+
+    if (conversaSelecionada) {
+      setCarregando(true);
+      setErroCarregamento("");
+      api
+        .get(`/api/chat/${conversaSelecionada}/historico/`)
+        .then((res) => {
+          const mensagensHistorico = (res.data.mensagens || []).map((m) => ({
+            role: m.role,
+            conteudo: m.conteudo_original,
+            fontes: m.fontes ?? [],
+            citacoes: [],
+            documentoPrincipal: null,
+            respondida: true,
+            avaliada: false,
+          }));
+
+          setConversaId(Number(conversaSelecionada));
+          setMensagens(mensagensHistorico);
+        })
+        .catch((err) => {
+          console.error("Erro ao carregar histórico da conversa:", err);
+          setErroCarregamento(
+            err.response?.status === 401
+              ? "Sua sessão expirou. Faça login novamente para acessar o chat."
+              : "Não foi possível carregar esta conversa agora."
+          );
+          setMensagens([]);
+        })
+        .finally(() => setCarregando(false));
+      return;
+    }
+
+    setMensagens([]);
+    setConversaId(null);
+    setErroCarregamento("");
+  }, [location.search]);
 
   useEffect(() => {
     fimRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [mensagens]);
+  }, [mensagens, carregando]);
 
-  // Quando a conversa selecionada mudar, carrega o histórico (ou limpa).
-  useEffect(() => {
-    if (!conversaId) {
-      setMensagens([]);
-      return;
-    }
-    let ativo = true;
-    api
-      .get(`/api/chat/${conversaId}/historico/`)
-      .then((res) => {
-        if (!ativo) return;
-        const msgs = (res.data?.mensagens || []).map((m) => ({
-          id: m.id,
-          role: m.role,
-          texto: m.conteudo_original,
-          feedback: m.feedback || null,
-        }));
-        setMensagens(msgs);
-      })
-      .catch(() => {
-        if (ativo) setMensagens([]);
-      });
-    return () => {
-      ativo = false;
-    };
-  }, [conversaId]);
-
-  async function handleEnviar() {
-    const texto = input.trim();
+  /**
+   * Envia a pergunta para o backend.
+   */
+  async function enviarPergunta(texto, { documentoIdFiltro, ecoarUsuario = true } = {}) {
     if (!texto || carregando) return;
 
-    setInput("");
-    setMensagens((prev) => [...prev, { role: "user", texto }]);
+    ultimaPerguntaRef.current = texto;
+
+    if (ecoarUsuario) {
+      setMensagens((prev) => [...prev, { role: "user", conteudo: texto }]);
+    }
     setCarregando(true);
 
     const eraNova = !conversaId;
 
     try {
-      const res = await api.post("/api/chat/pergunta/", {
-        conversa_id: conversaId,
-        question: texto,
-      });
+      const payload = { question: texto };
+      if (conversaId) {
+        payload.conversa_id = conversaId;
+      }
+      if (documentoIdFiltro != null) {
+        payload.documento_id_filtro = documentoIdFiltro;
+      }
 
-      const novoId = res.data.conversa_id;
-      if (eraNova) {
-        setConversaId?.(novoId);
-        onConversaCriada?.();
+      const res = await api.post("/api/chat/pergunta/", payload);
+
+      if (!conversaId && res.data?.conversa_id) {
+        setConversaId(res.data.conversa_id);
       }
 
       setMensagens((prev) => [
         ...prev,
         {
-          id: res.data.answer_id,
-          role: "assistant",
-          texto: res.data.answer,
-          feedback: null,
+          role:               "assistant",
+          id:                 res.data.answer_id ?? res.data.mensagem_id,
+          conteudo:           res.data.answer,
+          fontes:             res.data.fontes              ?? [],
+          citacoes:           res.data.citacoes            ?? [],
+          respondida:         res.data.respondida,
+          intencao:           res.data.intencao            ?? "rag",
+          opcoesClarificacao: res.data.opcoes_clarificacao ?? [],
+          avaliada:           false,
         },
       ]);
-    } catch {
+    } catch (error) {
+      console.error("Erro na requisição da pergunta:", error);
+      setErroCarregamento(
+        error.response?.status === 401
+          ? "Sua sessão expirou. Faça login novamente para continuar."
+          : "Não foi possível conectar ao servidor. Tente novamente."
+      );
       setMensagens((prev) => [
         ...prev,
-        { role: "assistant", texto: "Erro ao obter resposta. Tente novamente." },
+        {
+          role:               "assistant",
+          conteudo:           "Não foi possível conectar ao servidor. Tente novamente.",
+          fontes:             [],
+          citacoes:           [],
+          respondida:         false,
+          intencao:           "rag",
+          opcoesClarificacao: [],
+        },
       ]);
     } finally {
       setCarregando(false);
     }
   }
 
-  async function setFeedback(msgId, feedback) {
-    if (!msgId) return;
-    // toggle: se já tinha esse feedback, remove
-    setMensagens((prev) =>
-      prev.map((m) =>
-        m.id === msgId
-          ? { ...m, feedback: m.feedback === feedback ? null : feedback }
-          : m
-      )
-    );
-    const novoValor = (() => {
-      const atual = mensagens.find((m) => m.id === msgId)?.feedback;
-      return atual === feedback ? null : feedback;
-    })();
-    try {
-      await api.post(`/api/chat/mensagens/${msgId}/feedback/`, {
-        feedback: novoValor,
-      });
-    } catch {
-      // rollback simples em caso de erro
+  async function enviar() {
+    const texto = input.trim();
+    if (texto.length < 2) {
+      alert("Por favor, digite uma pergunta válida com mais detalhes.");
+      return;
     }
+    setInput("");
+    await enviarPergunta(texto);
+  }
+
+  /**
+   * Usuário clicou numa opção de clarificação — reenvia a última pergunta
+   * restringindo a busca ao documento escolhido.
+   */
+  async function escolherContexto(documentoId, documentoNome) {
+    const texto = ultimaPerguntaRef.current;
+    if (!texto) return;
+
+    setMensagens((prev) => [
+      ...prev,
+      { role: "user", conteudo: `Consultar em: ${documentoNome}` },
+    ]);
+
+    await enviarPergunta(texto, {
+      documentoIdFiltro: documentoId,
+      ecoarUsuario:      false,
+    });
   }
 
   async function regenerar(msgId) {
@@ -113,16 +172,21 @@ export default function ChatArea({ conversaId, setConversaId, onConversaCriada }
       setMensagens((prev) => [
         ...prev,
         {
-          id: res.data.id,
           role: "assistant",
-          texto: res.data.answer,
-          feedback: null,
+          id: res.data.id,
+          conteudo: res.data.answer,
+          fontes: [],
+          citacoes: [],
+          respondida: true,
+          intencao: "rag",
+          opcoesClarificacao: [],
+          avaliada: false,
         },
       ]);
     } catch {
       setMensagens((prev) => [
         ...prev,
-        { role: "assistant", texto: "Erro ao regenerar resposta." },
+        { role: "assistant", conteudo: "Erro ao regenerar resposta." },
       ]);
     } finally {
       setCarregando(false);
@@ -132,64 +196,137 @@ export default function ChatArea({ conversaId, setConversaId, onConversaCriada }
   function handleKeyDown(e) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleEnviar();
+      enviar();
+    }
+  }
+
+  // ISSUE 4: FUNÇÃO PARA ENVIAR FEEDBACK DA RESPOSTA
+  async function enviarFeedback(index, mensagemId, nota) {
+    if (!mensagemId) return;
+    try {
+      await api.patch(`/api/chat/mensagem/${mensagemId}/feedback/`, { nota });
+      setMensagens(prev => {
+        const novas = [...prev];
+        novas[index].avaliada = true;
+        return novas;
+      });
+    } catch (err) {
+      console.error("Erro ao enviar feedback", err);
+      alert("Erro ao salvar feedback.");
     }
   }
 
   return (
     <div className="chatArea">
       <div className="mensagens">
-        {mensagens.length === 0 && (
+        {mensagens.length === 0 ? (
           <div className="placeholder">
             <h2>Como posso ajudar?</h2>
+            {erroCarregamento && <p className="placeholderErro">{erroCarregamento}</p>}
           </div>
-        )}
+        ) : (
+          <div className="listaMensagens">
+            {mensagens.map((msg, i) => {
+              const ehClarificacao =
+                msg.role === "assistant" && msg.intencao === "clarificacao";
+              const semResposta =
+                msg.role === "assistant" &&
+                msg.respondida === false &&
+                !ehClarificacao;
 
-        {mensagens.map((m, i) => (
-          <div key={m.id ?? i} className={`mensagem ${m.role}`}>
-            {m.role === "assistant" ? (
-              <>
-                <ReactMarkdown>{m.texto}</ReactMarkdown>
-                {m.id && (
-                  <div className="acoesMsg">
-                    <button
-                      className={`btnAcao ${m.feedback === "positive" ? "ativo" : ""}`}
-                      onClick={() => setFeedback(m.id, "positive")}
-                      title="Resposta útil"
-                    >
-                      👍
-                    </button>
-                    <button
-                      className={`btnAcao ${m.feedback === "negative" ? "ativo" : ""}`}
-                      onClick={() => setFeedback(m.id, "negative")}
-                      title="Resposta ruim"
-                    >
-                      👎
-                    </button>
-                    <button
-                      className="btnAcao"
-                      onClick={() => regenerar(m.id)}
-                      title="Regenerar resposta"
-                      disabled={carregando}
-                    >
-                      🔄
-                    </button>
+              const classeExtra = ehClarificacao
+                ? " clarificacao"
+                : semResposta
+                ? " sem-resposta"
+                : "";
+
+              return (
+                <div key={i} className={`bolha ${msg.role}${classeExtra}`}>
+                  {semResposta && (
+                    <div className="sem-resposta-header">
+                      <span className="sem-resposta-icone">&#9888;</span>
+                      <span className="sem-resposta-titulo">Não foi possível responder</span>
+                    </div>
+                  )}
+
+                  {ehClarificacao && (
+                    <div className="clarificacao-header">
+                      <span className="clarificacao-icone">&#10068;</span>
+                      <span className="clarificacao-titulo">
+                        Pergunta ambígua — confirme o contexto
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="textoBolha">
+                    {msg.role === "assistant" ? (
+                      <div className="markdownResposta">
+                        <ReactMarkdown
+                          components={{
+                            p: ({ children }) => <p className="markdownParagrafo">{children}</p>,
+                            ul: ({ children }) => <ul className="markdownLista">{children}</ul>,
+                            ol: ({ children }) => <ol className="markdownLista">{children}</ol>,
+                            li: ({ children }) => <li className="markdownItem">{children}</li>,
+                            strong: ({ children }) => <strong className="markdownNegrito">{children}</strong>,
+                            blockquote: ({ children }) => <blockquote className="markdownCitacao">{children}</blockquote>,
+                          }}
+                        >
+                          {msg.conteudo || ""}
+                        </ReactMarkdown>
+                      </div>
+                    ) : (
+                      msg.conteudo
+                    )}
                   </div>
-                )}
-              </>
-            ) : (
-              <span>{m.texto}</span>
-            )}
-          </div>
-        ))}
 
-        {carregando && (
-          <div className="mensagem assistant">
-            <span>...</span>
+                  {ehClarificacao && msg.opcoesClarificacao?.length > 0 && (
+                    <OpcoesClarificacao
+                      opcoes={msg.opcoesClarificacao}
+                      onEscolher={escolherContexto}
+                      desabilitado={carregando}
+                    />
+                  )}
+
+                  {msg.citacoes && msg.citacoes.length > 0 && (
+                    <CitacoesArea citacoes={msg.citacoes} />
+                  )}
+
+                  {msg.role === "assistant" && msg.documentoPrincipal && (
+                    <div className="documentoPrincipalArea">
+                      <span className="documentoPrincipalLabel">Documento principal</span>
+                      <span className="documentoPrincipalValor">
+                        {msg.documentoPrincipal.nome} ({String(msg.documentoPrincipal.tipo || "desconhecido").toUpperCase()})
+                      </span>
+                    </div>
+                  )}
+
+                  {/* ISSUE 4: BOTÕES DE AVALIAÇÃO */}
+                  {msg.role === "assistant" && msg.id && !semResposta && !msg.avaliada && (
+                    <div className="feedbackArea">
+                      <span className="feedbackPergunta">A resposta foi útil?</span>
+                      <button onClick={() => enviarFeedback(i, msg.id, 1)} title="Sim">👍</button>
+                      <button onClick={() => enviarFeedback(i, msg.id, -1)} title="Não">👎</button>
+                    </div>
+                  )}
+                  {msg.avaliada && (
+                     <div className="feedbackArea"><span className="feedbackObrigado">Obrigado pelo feedback! ✓</span></div>
+                  )}
+                </div>
+              );
+            })}
+
+            {carregando && (
+              <div className="bolha assistant">
+                <div className="digitando">
+                  <span />
+                  <span />
+                  <span />
+                </div>
+              </div>
+            )}
+            <div ref={fimRef} />
           </div>
         )}
-
-        <div ref={fimRef} />
       </div>
 
       <div className="partedebaixo">
@@ -202,11 +339,63 @@ export default function ChatArea({ conversaId, setConversaId, onConversaCriada }
             onKeyDown={handleKeyDown}
             disabled={carregando}
           />
-          <button className="botaoEnviar" onClick={handleEnviar} disabled={carregando}>
+          <button className="botaoEnviar" onClick={enviar} disabled={carregando || input.trim().length < 2}>
             <img src={enviarIcon} alt="Enviar" />
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Opções de clarificação (renderizadas quando a pergunta é ambígua) ──
+function OpcoesClarificacao({ opcoes, onEscolher, desabilitado }) {
+  return (
+    <ul className="opcoesClarificacao">
+      {opcoes.map((op) => (
+        <li key={op.documento_id}>
+          <button
+            className="opcaoClarificacao"
+            onClick={() => onEscolher(op.documento_id, op.documento_nome)}
+            disabled={desabilitado}
+          >
+            <div className="opcaoHeader">
+              <span className="opcaoDoc">{op.documento_nome}</span>
+              {op.numero_pagina && (
+                <span className="opcaoPagina">pág.&nbsp;{op.numero_pagina}</span>
+              )}
+            </div>
+            <div className="opcaoTrecho">"{op.trecho}"</div>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function CitacoesArea({ citacoes }) {
+  const [aberto, setAberto] = useState(false);
+  return (
+    <div className="citacoesArea">
+      <button className="citacoesToggle" onClick={() => setAberto((v) => !v)} aria-expanded={aberto}>
+        <span className="citacoesIcone">&#128196;</span>
+        <span>{citacoes.length} fonte{citacoes.length !== 1 ? "s" : ""} consultada{citacoes.length !== 1 ? "s" : ""}</span>
+        <span className="citacoesChevron">{aberto ? "▲" : "▼"}</span>
+      </button>
+      {aberto && (
+        <ul className="citacoesList">
+          {citacoes.map((c) => (
+            <li key={c.ordem} className="citacaoCard">
+              <div className="citacaoHeader">
+                <span className="citacaoOrdem">{c.ordem}</span>
+                <span className="citacaoDoc">{c.documento_nome}</span>
+                {c.numero_pagina && <span className="citacaoPagina">pág.&nbsp;{c.numero_pagina}</span>}
+              </div>
+              <blockquote className="citacaoTrecho">{c.trecho}</blockquote>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

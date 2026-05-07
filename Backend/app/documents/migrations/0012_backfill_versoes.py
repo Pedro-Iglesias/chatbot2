@@ -1,6 +1,8 @@
 """
+Renumerada de 0007 para 0012 após merge.
+
 Data migration: cria uma versão inicial (v1, ativa) para cada Documento existente
-e vincula todos os chunks atuais a essa versão.
+e vincula todos os chunks atuais a essa versão. Idempotente.
 """
 from django.db import migrations
 
@@ -11,7 +13,6 @@ def backfill(apps, schema_editor):
     ChunkDocumento = apps.get_model("documents", "ChunkDocumento")
 
     for doc in Documento.objects.all():
-        # Se já existir alguma versão, pula (idempotente)
         if doc.versoes.exists():
             continue
         v1 = VersaoDocumento.objects.create(
@@ -22,19 +23,17 @@ def backfill(apps, schema_editor):
             caminho_arquivo=doc.caminho_arquivo,
             ativa=True,
         )
-        # Vincula chunks órfãos (versao=NULL) à v1
         ChunkDocumento.objects.filter(documento=doc, versao__isnull=True).update(versao=v1)
 
 
 def reverse(apps, schema_editor):
-    # Não há rollback significativo para uma data migration de backfill.
     pass
 
 
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("documents", "0006_alter_chunkdocumento_unique_together_versaodocumento_and_more"),
+        ("documents", "0011_versaodocumento"),
     ]
 
     operations = [
