@@ -66,7 +66,7 @@
 }
 
 .docCatBtnMeta {
-  background-color: #00adb520;
+  background-color: #1e3942;
   color: #4fd4dc;
   border: 1px solid #00adb540;
 }
@@ -75,7 +75,7 @@
 }
 
 .docCatBtnAdmin {
-  background-color: #7c6af720;
+  background-color: #2d304a;
   color: #c4bffb;
   border: 1px solid #7c6af740;
 }
@@ -220,7 +220,7 @@
 }
 
 .acaoSucesso {
-  background: #00adb520;
+  background: #1e3942;
   border: 1px solid #00adb550;
   color: #4fd4dc;
   border-radius: 10px;

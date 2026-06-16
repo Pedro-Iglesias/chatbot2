@@ -184,7 +184,7 @@
   margin: 0;
   padding: 10px 14px;
   border-radius: 12px;
-  background: rgba(0, 173, 181, 0.12);
+  background: #324b53;
   color: #4fd4dc;
   font-size: 14px;
   text-align: center;
@@ -533,7 +533,7 @@
 
 .citacaoPagina {
   font-size: 10px;
-  background-color: rgba(0, 173, 181, 0.15);
+  background-color: #1d373d;
   color: #4fd4dc;
   border: 1px solid rgba(0, 173, 181, 0.4);
   border-radius: 10px;
@@ -642,7 +642,7 @@
 
 .opcaoPagina {
   font-size: 10px;
-  background-color: rgba(0, 173, 181, 0.15);
+  background-color: #1b353b;
   color: #4fd4dc;
   border: 1px solid rgba(0, 173, 181, 0.4);
   border-radius: 10px;
