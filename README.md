@@ -81,26 +81,29 @@ Copy-Item .env.example .env
 - GEMINI_API_KEY
 - POSTGRES_DB
 - POSTGRES_USER
-- POSTGRES_PASSWORD
+- POSTGRES_PASSWORD (obrigatorio)
 - DB_HOST
 - DB_PORT
-- SECRET_KEY
+- SECRET_KEY (obrigatorio)
 - DEBUG
 - ALLOWED_HOSTS
 - CHAT_MODEL
 - EMBEDDING_MODEL
 - TOP_K
 
+> SECRET_KEY e POSTGRES_PASSWORD nao tem mais valor padrao no codigo: se
+> faltarem no .env, o Django levanta KeyError e nao inicia.
+
 Valores recomendados para ambiente local:
 
 - DB_HOST=127.0.0.1
-- DB_PORT=5555
-- CHAT_MODEL=gemini-1.5-flash
-- EMBEDDING_MODEL=embedding-001
+- DB_PORT=5544
+- CHAT_MODEL=gemini-flash-latest
+- EMBEDDING_MODEL=gemini-embedding-001
 - TOP_K=5
 
 Observacao importante:
-- O docker-compose publica o PostgreSQL na porta 5555 (host) para 5432 (container).
+- O docker-compose publica o PostgreSQL na porta 5544 (host) para 5432 (container).
 
 ## Como rodar localmente
 
@@ -226,6 +229,7 @@ Resultado observado:
 - Existe codigo legado/prototipo em partes do repositorio (ex.: referencias antigas em Backend/app/main.py e pasta chatbot/).
 - O docker-compose define servico frontend com Dockerfile dentro de frontend/, mas esse arquivo nao existe atualmente.
 - A biblioteca google-generativeai funciona no projeto, mas ja sinaliza descontinuacao futura em favor de google.genai.
+- A imagem do backend roda como usuario nao-root (appuser, uid 1000) e o .dockerignore impede que .env e outros arquivos sensiveis sejam copiados para dentro da imagem.
 
 ## Problemas comuns
 
@@ -243,7 +247,7 @@ Suba o Docker Desktop antes de rodar docker-compose.
 Confirme:
 - container chatbot_db em estado healthy
 - DB_HOST e DB_PORT corretos
-- porta 5555 disponivel no host
+- porta 5544 disponivel no host
 
 ## Proximos passos recomendados
 
