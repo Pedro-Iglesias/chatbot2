@@ -1,0 +1,49 @@
+# ── Segredos e variáveis de ambiente (NUNCA na imagem) ──
+.env
+.env.*
+!.env.example
+
+# ── Git / CI ──
+.git
+.gitignore
+.gitattributes
+.github
+
+# ── Python: cache, bytecode, ambientes virtuais ──
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+
+# ── Distribuição / build ──
+dist/
+build/
+
+# ── Frontend: dependências e build (imagem do backend não precisa) ──
+frontend/node_modules/
+frontend/dist/
+node_modules/
+
+# ── Ferramentas / IDE / Claude Code ──
+.claude/
+.vscode/
+.idea/
+
+# ── Banco local / logs ──
+*.sqlite3
+*.log
+
+# ── Documentos e mídia que não fazem parte da aplicação ──
+*.pptx
+
+# ── Docker (evita copiar para dentro da imagem) ──
+Dockerfile
+.dockerignore
+docker-compose.yml
